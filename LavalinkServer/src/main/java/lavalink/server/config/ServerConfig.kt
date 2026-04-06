@@ -49,7 +49,17 @@ class ServerConfig {
     var filters: Map<String, Boolean> = mapOf()
     var timeouts: TimeoutsConfig? = null
     var transportMode: String = "koe"
+        set(value) {
+            require(value in VALID_TRANSPORT_MODES) {
+                "Invalid transportMode '$value'. Must be one of: $VALID_TRANSPORT_MODES"
+            }
+            field = value
+        }
     var bridge: BridgeConfig? = null
+
+    companion object {
+        val VALID_TRANSPORT_MODES = setOf("koe", "external_bridge")
+    }
 }
 
 class BridgeConfig {

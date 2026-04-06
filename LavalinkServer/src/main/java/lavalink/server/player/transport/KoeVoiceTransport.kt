@@ -87,16 +87,17 @@ class KoeVoiceTransport(
         var conn = koe.getConnection(guildId)
         if (conn == null) {
             conn = koe.createConnection(guildId)
-            conn.registerListener(WsEventHandler(player))
+            conn.registerListener(WsEventHandler(guildId))
         }
         return conn
     }
 
-    private inner class WsEventHandler(private val player: LavalinkPlayer) : KoeEventAdapter() {
+    private inner class WsEventHandler(private val guildId: Long) : KoeEventAdapter() {
         override fun gatewayClosed(code: Int, reason: String?, byRemote: Boolean) {
             val context = contextRef()
+            val player = context.players[guildId] ?: return
             val event = Message.EmittedEvent.WebSocketClosedEvent(
-                player.guildId.toString(),
+                guildId.toString(),
                 code,
                 reason ?: "",
                 byRemote
@@ -106,11 +107,13 @@ class KoeVoiceTransport(
         }
 
         override fun gatewayReady(target: InetSocketAddress?, ssrc: Int) {
-            SocketServer.sendPlayerUpdate(contextRef(), player)
+            val context = contextRef()
+            val player = context.players[guildId] ?: return
+            SocketServer.sendPlayerUpdate(context, player)
         }
 
         override fun gatewayError(cause: Throwable) {
-            log.error("Koe encountered a voice gateway exception for guild ${player.guildId}", cause)
+            log.error("Koe encountered a voice gateway exception for guild $guildId", cause)
         }
     }
 }

@@ -48,8 +48,6 @@ class LavalinkPlayer(
     audioPlayerManager: AudioPlayerManager,
     pluginInfoModifiers: List<AudioPluginInfoModifier>
 ) : AudioEventAdapter(), IPlayer {
-    private val buffer = ByteBuffer.allocate(StandardAudioDataFormats.DISCORD_OPUS.maximumChunkSize())
-    private val mutableFrame = MutableAudioFrame().apply { setBuffer(buffer) }
 
     val audioLossCounter = AudioLossCounter()
     var endMarkerHit = false
@@ -124,6 +122,9 @@ class LavalinkPlayer(
     }
 
     private inner class Provider : AudioFrameProvider {
+        // Per-instance buffer so concurrent providers don't corrupt each other
+        private val buffer = ByteBuffer.allocate(StandardAudioDataFormats.DISCORD_OPUS.maximumChunkSize())
+        private val mutableFrame = MutableAudioFrame().apply { setBuffer(buffer) }
 
         override fun onCodecChanged(codec: CodecInstance) {
         }
