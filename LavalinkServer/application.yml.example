@@ -69,6 +69,9 @@ lavalink:
       connectTimeoutMs: 3000
       connectionRequestTimeoutMs: 3000
       socketTimeoutMs: 3000
+    #transport-mode: external_bridge  # Default: "koe". Set to "external_bridge" to export audio via the bridge WebSocket.
+    #bridge:
+    #  auth-token: "change-me"        # Bearer token for bridge WebSocket authentication at /bridge/v1
 
 metrics:
   prometheus:

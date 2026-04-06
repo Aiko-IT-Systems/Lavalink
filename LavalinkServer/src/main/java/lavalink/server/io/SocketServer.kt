@@ -30,9 +30,13 @@ import dev.arbjerg.lavalink.protocol.v4.Message
 import dev.arbjerg.lavalink.protocol.v4.PlayerState
 import lavalink.server.config.ServerConfig
 import lavalink.server.player.LavalinkPlayer
+import lavalink.server.player.transport.BridgeWebSocketServer
+import lavalink.server.player.transport.ExternalBridgeTransport
+import lavalink.server.player.transport.KoeVoiceTransport
 import moe.kyokobot.koe.Koe
 import moe.kyokobot.koe.KoeOptions
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
@@ -48,6 +52,9 @@ final class SocketServer(
     private val eventHandlers: List<PluginEventHandler>,
     private val pluginInfoModifiers: List<AudioPluginInfoModifier>
 ) : TextWebSocketHandler(), ISocketServer {
+
+    @Autowired(required = false)
+    private val bridgeWebSocketServer: BridgeWebSocketServer? = null
 
     // sessionID <-> Session
     override val sessions = ConcurrentHashMap<String, SocketContext>()
@@ -66,15 +73,14 @@ final class SocketServer(
         fun sendPlayerUpdate(socketContext: SocketContext, player: LavalinkPlayer) {
             if (socketContext.sessionPaused) return
 
-            val connection = socketContext.getMediaConnection(player).gatewayConnection
             socketContext.sendMessage(
                     Message.Serializer,
                     Message.PlayerUpdateEvent(
                     PlayerState(
                         System.currentTimeMillis(),
                         player.audioPlayer.playingTrack?.position ?: 0,
-                        connection?.isOpen == true,
-                        connection?.ping ?: -1L
+                        socketContext.transport.isConnected(player.guildId),
+                        socketContext.transport.getPing(player.guildId)
                     ),
                     player.guildId.toString()
                 )
@@ -124,10 +130,20 @@ final class SocketServer(
             statsCollector,
             userId,
             clientName,
-            koe.newClient(userId),
             eventHandlers,
             pluginInfoModifiers
         )
+
+        // Wire up the appropriate transport backend
+        if (serverConfig.transportMode == "external_bridge") {
+            val bridge = bridgeWebSocketServer
+                ?: throw IllegalStateException("Bridge transport mode is configured but BridgeWebSocketServer bean is missing")
+            socketContext.transport = ExternalBridgeTransport(bridge)
+            log.info("Using external bridge transport for session $sessionId")
+        } else {
+            val koeClient = koe.newClient(userId)
+            socketContext.transport = KoeVoiceTransport(koeClient) { socketContext }
+        }
         sessions[sessionId] = socketContext
         socketContext.sendMessage(Message.Serializer, Message.ReadyEvent(false, sessionId))
         socketContext.eventEmitter.onWebSocketOpen(false)

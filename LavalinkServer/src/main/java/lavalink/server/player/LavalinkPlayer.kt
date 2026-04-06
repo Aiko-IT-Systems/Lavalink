@@ -35,7 +35,6 @@ import lavalink.server.config.ServerConfig
 import lavalink.server.io.SocketContext
 import lavalink.server.io.SocketServer.Companion.sendPlayerUpdate
 import lavalink.server.player.filters.FilterChain
-import moe.kyokobot.koe.MediaConnection
 import moe.kyokobot.koe.codec.CodecInstance
 import moe.kyokobot.koe.media.AudioFrameProvider
 import java.nio.ByteBuffer
@@ -78,8 +77,8 @@ class LavalinkPlayer(
         audioPlayer.destroy()
     }
 
-    fun provideTo(connection: MediaConnection) {
-        connection.audioSender = Provider()
+    fun createFrameProvider(): AudioFrameProvider {
+        return Provider()
     }
 
 

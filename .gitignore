@@ -6,6 +6,7 @@
 */dependency-reduced-pom.xml
 .gradle/*
 build/*
+bin/
 *.jar
 !gradle/wrapper/gradle-wrapper.jar
 .project

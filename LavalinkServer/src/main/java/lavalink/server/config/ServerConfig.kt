@@ -48,6 +48,12 @@ class ServerConfig {
     var httpConfig: HttpConfig? = null
     var filters: Map<String, Boolean> = mapOf()
     var timeouts: TimeoutsConfig? = null
+    var transportMode: String = "koe"
+    var bridge: BridgeConfig? = null
+}
+
+class BridgeConfig {
+    var authToken: String = "change-me"
 }
 
 class TimeoutsConfig {

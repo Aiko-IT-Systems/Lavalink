@@ -9,8 +9,8 @@ import dev.arbjerg.lavalink.protocol.v4.*
 import lavalink.server.config.ServerConfig
 import lavalink.server.io.SocketServer
 import lavalink.server.player.filters.FilterChain
+import lavalink.server.player.transport.VoiceStateInfo
 import lavalink.server.util.*
-import moe.kyokobot.koe.VoiceServerInfo
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -112,31 +112,15 @@ class PlayerRestHandler(
 
         playerUpdate.voice.ifPresent {
             synchronized(player) {
-                val oldConn = context.koe.getConnection(guildId)
-                if (oldConn == null ||
-                    oldConn.gatewayConnection?.isOpen == false ||
-                    oldConn.voiceServerInfo == null ||
-                    oldConn.voiceServerInfo?.endpoint != it.endpoint ||
-                    oldConn.voiceServerInfo?.token != it.token ||
-                    oldConn.voiceServerInfo?.sessionId != it.sessionId ||
-                    oldConn.voiceServerInfo?.channelId != it.channelId!!.toLong()
-                ) {
-                    //clear old connection
-                    context.koe.destroyConnection(guildId)
-
-                    val conn = context.getMediaConnection(player)
-                    conn.connect(
-                        VoiceServerInfo.builder()
-                            .setSessionId(it.sessionId)
-                            .setEndpoint(it.endpoint)
-                            .setToken(it.token)
-                            .setChannelId(it.channelId!!.toLong())
-                            .build()
-                    ).exceptionally {
-                        throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to connect to voice server")
-                    }.toCompletableFuture().join()
-                    player.provideTo(conn)
-                }
+                context.transport.onVoiceStateUpdate(
+                    player,
+                    VoiceStateInfo(
+                        sessionId = it.sessionId,
+                        endpoint = it.endpoint,
+                        token = it.token,
+                        channelId = it.channelId!!.toLong()
+                    )
+                )
             }
         }
 
@@ -221,7 +205,7 @@ class PlayerRestHandler(
                 }
 
                 player.play(newTrack)
-                player.provideTo(context.getMediaConnection(player))
+                context.transport.attachFrameSource(player)
             } ?: player.stop()
         }
 
